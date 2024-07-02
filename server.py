@@ -79,7 +79,8 @@ def start_game():
         'ball_y': ball.rect.y,
         'score1': score1,
         'score2': score2,
-        'type': 'start_game'
+        'type': 'start_game',
+        'winner': winner
     }
     for client in clients:
         client.sendall(json.dumps(state).encode())
@@ -92,7 +93,7 @@ def broadcast(game_data, sender_socket):
 
 
 def game_loop():
-    global ball, paddle1, paddle2, score1, score2, game_over
+    global ball, paddle1, paddle2, score1, score2, game_over, winner
     while True:
         with lock:
             if game_state == 'IN_GAME':
@@ -114,8 +115,13 @@ def game_loop():
                     ball.reset(WIDTH // 2, HEIGHT // 2)
 
                 # check if score is 5
-                if score1 == 5 or score2 == 5:
+                if score1 == 5:
                     game_over = True
+                    winner = roles[0]
+
+                elif score2 == 5:
+                    game_over = True
+                    winner = roles[1]
 
                 # Broadcast the updated state
                 state = {
@@ -126,7 +132,8 @@ def game_loop():
                     'score1': score1,
                     'score2': score2,
                     'type': 'update',
-                    'game_over': game_over
+                    'game_over': game_over,
+                    'winner': winner
                 }
                 broadcast(state, None)
 

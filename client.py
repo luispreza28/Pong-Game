@@ -20,6 +20,7 @@ BLACK = pygame.Color(0, 0, 0)
 SPEED_INCREMENT = 1.06
 
 score1, score2 = 0, 0
+won = False
 
 # Create the screen
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -92,7 +93,7 @@ def connect_to_server():
         print(f"Socket error: {se}")
 
 def receive_data():
-    global paddle1, paddle2, ball, score1, score2, online_state, client_role
+    global paddle1, paddle2, ball, score1, score2, online_state, client_role, won
     decoder = json.JSONDecoder()
     buffer = ""
     while True:
@@ -111,6 +112,8 @@ def receive_data():
                             online_state = OnlineState.IN_GAME
                         elif game_data.get('game_over') == True:
                             online_state = OnlineState.GAME_OVER
+                            won = game_data.get('winner') == client_role
+
                         else:
                             update_game_state(game_data)
                     except ValueError:
@@ -334,11 +337,17 @@ def send_paddle_position():
 
 
 def draw_game_over():
+    global won
     screen.blit(game_over_image, (0, 0))
 
     # Menu text
-    menu_text = font.render("Game Over", True, EROTIC_RED)
-    screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
+    if won:
+        menu_text = font.render("WINNER", True, EROTIC_RED)
+        screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
+    else:
+        menu_text = font.render("LOSER", True, EROTIC_RED)
+        screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
+
 
 # Online
 def handle_online():
