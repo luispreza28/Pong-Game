@@ -17,7 +17,7 @@ EROTIC_RED = pygame.Color(35, 27, 255) # BGR
 WHITE = pygame.Color(255, 255, 255)
 BLACK = pygame.Color(0, 0, 0)
 
-SPEED_INCREMENT = 1.05
+SPEED_INCREMENT = 1.06
 
 score1, score2 = 0, 0
 
