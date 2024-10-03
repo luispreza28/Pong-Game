@@ -13,9 +13,10 @@ pygame.mixer.init()
 # Constants
 WIDTH = 900
 HEIGHT = 500
-EROTIC_RED = pygame.Color(35, 27, 255) # BGR
+RED = pygame.Color(35, 27, 255) # BGR
 WHITE = pygame.Color(255, 255, 255)
 BLACK = pygame.Color(0, 0, 0)
+TIMER = 5
 
 SPEED_INCREMENT = 1.06
 
@@ -24,7 +25,7 @@ won = False
 
 # Create the screen
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Dong Erotica")
+pygame.display.set_caption("Pong")
 
 # Initialize font
 pygame.font.init()
@@ -41,11 +42,11 @@ pygame.mixer.music.load('soundtrack1.mp3')
 pygame.mixer.music.play(-1)
 
 # Load hit sound effects
-paddle_hit_sound = pygame.mixer.Sound('sound-effect.mp3')
-wall_hit_sound = pygame.mixer.Sound('sound-effect3.mp3')
+paddle_hit_sound = pygame.mixer.Sound('osu-sound-hit.mp3')
+wall_hit_sound = pygame.mixer.Sound('wall-hit-sound.mp3')
 
 # Load background images
-home_screen = pygame.image.load('background-e.jpg')
+home_screen = pygame.image.load('home-screen-image.jpeg')
 home_screen = pygame.transform.scale(home_screen, (WIDTH, HEIGHT))
 
 background_image = pygame.image.load('pong-background.png')
@@ -54,8 +55,9 @@ background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
 waiting_image = pygame.image.load('joe-byron.jpg')
 waiting_image = pygame.transform.scale(waiting_image, (WIDTH, HEIGHT))
 
-game_over_image = pygame.image.load('end-game-pic.jpg')
+game_over_image = pygame.image.load('kitty-end-game-image.jpg')
 game_over_image = pygame.transform.scale(game_over_image, (WIDTH, HEIGHT))
+
 
 # Define game states
 class GameState(Enum):
@@ -63,12 +65,15 @@ class GameState(Enum):
     SPLIT_SCREEN = 2
     ONLINE = 3
     GAME_OVER = 4
+    SPLIT_SCREEN_GAME_OVER = 5
+
 
 # Define online game states
 class OnlineState(Enum):
     WAITING = 1
     IN_GAME = 2
     GAME_OVER = 3
+
 
 # Initialize game state
 game_state = GameState.MAIN_MENU
@@ -82,6 +87,7 @@ PORT = 12345
 client_socket = None
 client_role = None
 
+
 def connect_to_server():
     global client_socket
     try:
@@ -92,8 +98,9 @@ def connect_to_server():
     except socket.error as se:
         print(f"Socket error: {se}")
 
+
 def receive_data():
-    global paddle1, paddle2, ball, score1, score2, online_state, client_role, won
+    global paddle1, paddle2, ball, score1, score2, online_state, client_role, won, game_state
     decoder = json.JSONDecoder()
     buffer = ""
     while True:
@@ -110,10 +117,11 @@ def receive_data():
                             print(f"Assigned role: {client_role}")
                         elif game_data.get('type') == 'start_game':
                             online_state = OnlineState.IN_GAME
-                        elif game_data.get('game_over') == True:
+                        elif game_data.get('game_over'):
                             online_state = OnlineState.GAME_OVER
                             won = game_data.get('winner') == client_role
-
+                        elif game_data.get('waiting'):
+                            online_state = OnlineState.WAITING
                         else:
                             update_game_state(game_data)
                     except ValueError:
@@ -125,6 +133,7 @@ def receive_data():
         except Exception as e:
             print(f"Error receiving data: {e}")
             break
+
 
 def update_game_state(game_data):
     global paddle1, paddle2, ball, score1, score2
@@ -140,6 +149,7 @@ def update_game_state(game_data):
         score1 = game_data['score1']
     if 'score2' in game_data:
         score2 = game_data['score2']
+
 
 def send_data():
     game_data = {
@@ -157,6 +167,7 @@ def send_data():
         print(f"Connection Error: {e}")
     except Exception as e:
         print(f"Error sending data: {e}")
+
 
 # Main Loop
 def main():
@@ -177,9 +188,12 @@ def main():
             handle_online()
         elif game_state == GameState.GAME_OVER:
             draw_game_over()
+        elif game_state == GameState.SPLIT_SCREEN_GAME_OVER:
+            draw_splitscreen_game_over()
 
         pygame.display.flip()
         clock.tick(60)
+
 
 # Main Menu
 def handle_main_menu():
@@ -187,23 +201,25 @@ def handle_main_menu():
     screen.blit(home_screen, (0, 0))
 
     # Menu text
-    menu_text = font.render("Main Menu", True, EROTIC_RED)
+    menu_text = font.render("Main Menu", True, RED)
     screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
 
     # Split screen text
-    split_screen_text = font.render("1: Split Screen", True, EROTIC_RED)
+    split_screen_text = font.render("1: Split Screen", True, RED)
     screen.blit(split_screen_text, (WIDTH // 4 - split_screen_text.get_width() // 1.5 + 100, HEIGHT // 2 - split_screen_text.get_height() // 2))
 
     # Online text
-    online_text = font.render("2: Online", True, EROTIC_RED)
+    online_text = font.render("2: Online", True, RED)
     screen.blit(online_text, (WIDTH // 2 + 100, HEIGHT // 2 - online_text.get_height() // 2))
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_1]:
+        reset_positions()
         game_state = GameState.SPLIT_SCREEN
     if keys[pygame.K_2]:
         game_state = GameState.ONLINE
         connect_to_server()
+
 
 # Split screen
 def handle_split_screen(paddle1, paddle2, ball, clock):
@@ -217,7 +233,7 @@ def handle_split_screen(paddle1, paddle2, ball, clock):
     # check if game is over
     if score1 == 2 or score2 == 2:
         game_over = True
-        game_state = GameState.GAME_OVER
+        game_state = GameState.SPLIT_SCREEN_GAME_OVER
 
     # Check for user input
     keys = pygame.key.get_pressed()
@@ -252,7 +268,7 @@ def handle_split_screen(paddle1, paddle2, ball, clock):
     if ball.rect.left <= 0:
         score2 += 1
         ball.reset(WIDTH // 2, HEIGHT // 2)
-        ball.speed_x = 4
+        ball.speed_x = -4
         ball.speed_y = 4
 
     # Check if paddle1 scores
@@ -273,13 +289,13 @@ def handle_split_screen(paddle1, paddle2, ball, clock):
     ball.draw(screen)
 
     # Draw score
-    score_text = font.render(f"{score1} - {score2}", True, EROTIC_RED)
+    score_text = font.render(f"{score1} - {score2}", True, RED)
     screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 10))
 
 
 def handle_waiting():
     screen.blit(waiting_image, (0, 0))
-    waiting_text = font.render("Waiting for player...", True, EROTIC_RED)
+    waiting_text = font.render("Waiting for player...", True, RED)
     screen.blit(waiting_text, (WIDTH // 2 - waiting_text.get_width() // 2, HEIGHT // 2))
 
 
@@ -314,9 +330,8 @@ def handle_in_game():
     ball.draw(screen)
 
     # Draw score
-    score_text = font.render(f"{score1} - {score2}", True, EROTIC_RED)
+    score_text = font.render(f"{score1} - {score2}", True, RED)
     screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 10))
-
 
 
 def send_paddle_position():
@@ -335,18 +350,55 @@ def send_paddle_position():
         print(f"Error sending data: {e}")
 
 
+def draw_splitscreen_game_over():
+    global score1, score2, TIMER, game_state
+    screen.blit(game_over_image, (0, 0))
+
+    # Menu text
+    if score1 > score2:
+        menu_text = font.render("Player 1 won!", True, RED)
+        screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
+    else:
+        menu_text = font.render("Plyaer 2 won!", True, RED)
+        screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
+
+    # Display the countdown timer
+    timer_text = font.render(f"Returning in {int(TIMER)}...", True, RED)
+    screen.blit(timer_text, (WIDTH // 2 - timer_text.get_width() // 2, HEIGHT // 2 ))
+
+    # Decrement the timer
+    TIMER -= 1 / 60
+
+    # Check if timer reaches zero
+    if TIMER < 1:
+        reset_positions()
+        game_state = GameState.MAIN_MENU
+        TIMER = 5
+
 
 def draw_game_over():
-    global won
+    global won, TIMER, game_state
     screen.blit(game_over_image, (0, 0))
 
     # Menu text
     if won:
-        menu_text = font.render("WINNER", True, EROTIC_RED)
+        menu_text = font.render("YOU WON", True, RED)
         screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
     else:
-        menu_text = font.render("LOSER", True, EROTIC_RED)
+        menu_text = font.render("YOU LOST", True, RED)
         screen.blit(menu_text, (WIDTH // 2 - menu_text.get_width() // 2, HEIGHT // 4 - menu_text.get_height() // 4))
+
+    # Display the countdown timer
+    timer_text = font.render(f"Returning in {int(TIMER)}...", True, RED)
+    screen.blit(timer_text, (WIDTH // 2 - timer_text.get_width() // 2, HEIGHT // 2))
+
+    # Decrement the timer
+    TIMER -= 1 / 60
+
+    # Check if timer reaches zero
+    if TIMER < 1:
+        game_state = GameState.MAIN_MENU
+        TIMER = 5
 
 
 # Online
@@ -368,6 +420,17 @@ def handle_online():
     keys = pygame.key.get_pressed()
     if keys[pygame.K_ESCAPE]:
         game_state = GameState.MAIN_MENU
+
+
+# Reset function
+def reset_positions():
+    global paddle1, paddle2, ball, score1, score2, game_over, TIMER
+    paddle1 = Paddle(30, HEIGHT // 2 - 60, 10, 120)
+    paddle2 = Paddle(WIDTH - 40, HEIGHT // 2 - 60, 10, 120)
+    ball = Ball(WIDTH // 2, HEIGHT // 2, 15)
+    score1, score2 = 0, 0
+    game_over = False
+    TIMER = 5
 
 if __name__ == "__main__":
     main()
