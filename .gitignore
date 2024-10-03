@@ -1,0 +1,21 @@
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore environment files
+.env
+venv/
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+
+# Ignore log files
+*.log
+
+# Ignore media files
+background-e.jpg
+end-game-pic.jpg
+sound-effect.mp3
+sound-effect2.mp3
+sound-effect3.mp3
