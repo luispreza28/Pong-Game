@@ -153,6 +153,14 @@ def game_loop():
                 print(f"Number of connected clients {connected_clients}")
                 # Wait for a few seconds before resetting the game
                 if game_over:
+                    state = {
+                        'type': 'game_over',
+                        'winner': winner,
+                        'game_state': game_state,
+                        'score1': score1,
+                        'score2': score2
+                    }
+                    broadcast(state, None)
                     time.sleep(5)
                     reset_game()
 
