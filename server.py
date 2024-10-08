@@ -92,6 +92,7 @@ def start_game():
 
 
 def broadcast(game_data, sender_socket):
+    message = json.dumps(game_data) + '\n'
     for client in clients:
         if client != sender_socket:
             try:
